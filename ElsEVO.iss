@@ -3,9 +3,9 @@
 ; Non-commercial use only.
 
 #define MyAppName "ElsEvo"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.0.0"
 #define MyAppPublisher "AyameJJ"
-#define MyAppURL "https://www.example.com/"
+#define MyAppURL "https://github.com/AyameJk/ElsEvo"
 #define MyAppExeName "ElsEvo.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"
@@ -13,9 +13,17 @@
 #define DoubleAmp(Value) StringChange(Value, "&", "&&")
 #define EscapeConstArgument(Value) StringChange(StringChange(StringChange(Value, "%", "%25"), ",", "%2c"), "}", "%7d")
 
+; Pasta real onde o "dotnet publish" grava a build (self-contained, single-file), pra não
+; repetir o caminho inteiro em cada linha do [Files] abaixo. Se um dia mudar o
+; TargetFramework do .csproj (ex.: net8.0-windows -> net9.0-windows), ajuste aqui também.
+#define PublishDir "C:\Users\Victorr\OneDrive\ProjetoElsEvo\ElsEvo\bin\Release\net8.0-windows\win-x64"
+
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
+; ATENÇÃO: esse AppId precisa ser IDÊNTICO no .iss do canal beta (ElsEvoBeta) -- é o que
+; permite instalar um canal por cima do outro (substituindo no lugar), em vez de instalar
+; como programa duplicado. Não gere um GUID novo pro beta, copie este aqui.
 AppId={{8910440C-BF7A-494D-B5AD-7F0A4DA85D60}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -46,18 +54,32 @@ OutputDir=C:\Users\Victorr\Downloads\Output
 ; GitHub redireciona ignorando maiúscula/minúscula.
 OutputBaseFilename=ElsEvo-Setup
 
-SetupIconFile=C:\Users\Victorr\OneDrive\ProjetoElsEvo\ElsEVO\icone_app.ico
+; O ícone fica dentro de Assets\, não solto na raiz do projeto (o duplicado solto foi
+; removido do repositório -- ver commit "Remove ícone da aplicação solto").
+SetupIconFile=C:\Users\Victorr\OneDrive\ProjetoElsEvo\ElsEvo\Assets\icone_app.ico
 SolidCompression=yes
 WizardStyle=modern dynamic
 
-; ===== Fechamento automático do ElsEVO durante a atualização =====
+; ===== Metadados do arquivo .exe do instalador (aba "Detalhes" nas Propriedades do
+; Windows) — sem essas diretivas, o Inno Setup deixa a "Versão do arquivo" zerada
+; (0.0.0.0), o idioma como "Neutro" e os campos de Empresa/Direitos autorais vazios. =====
+VersionInfoVersion={#MyAppVersion}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoCopyright=Copyright (C) 2026 {#MyAppPublisher}
+VersionInfoDescription=ElsEvo Setup
+VersionInfoProductName={#MyAppName}
+VersionInfoProductVersion={#MyAppVersion}
+; Deixa o idioma dos metadados do arquivo como Português do Brasil, em vez de "Neutro".
+VersionInfoLanguage=Portuguese (Brazilian)
+
+; ===== Fechamento automático do ElsEvo durante a atualização =====
 ; AppMutex faz o Inno Setup checar (via Restart Manager do Windows) se um processo com
 ; esse nome de mutex está rodando antes de sobrescrever os arquivos, e oferece fechar
-; sozinho. O ElsEVO não cria esse mutex explicitamente hoje (o app se fecha por conta
+; sozinho. O ElsEvo não cria esse mutex explicitamente hoje (o app se fecha por conta
 ; própria antes de chamar o instalador — ver MainWindow.BaixarEInstalarAtualizacaoAsync),
 ; mas deixamos isso como reforço/rede de segurança pra quando alguém rodar o instalador
 ; manualmente com o app ainda aberto (ex.: baixou direto da página de Releases).
-AppMutex=ElsEVO_MutexPrincipal
+AppMutex=ElsEvo_MutexPrincipal
 CloseApplications=yes
 RestartApplications=yes
 
@@ -71,8 +93,12 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "C:\Users\Victorr\OneDrive\ProjetoElsEvo\ElsEVO\publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\Users\Victorr\OneDrive\ProjetoElsEvo\ElsEVO\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Aponta direto pra pasta que o "dotnet publish" gera de verdade
+; (bin\Release\net8.0-windows\win-x64\), não pra uma pasta "publish\" separada que não
+; existe nesse fluxo. Com PublishSingleFile=true, tudo (exe + dependências embutidas)
+; fica nessa mesma pasta.
+Source: "{#PublishDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files.
 
 [Registry]
@@ -86,6 +112,6 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-; postinstall + skipifsilent: depois que a instalação termina, oferece reabrir o ElsEVO
+; postinstall + skipifsilent: depois que a instalação termina, oferece reabrir o ElsEvo
 ; automaticamente (checkbox marcado por padrão na última tela do assistente).
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#DoubleAmp(MyAppName)}}"; Flags: nowait postinstall skipifsilent
