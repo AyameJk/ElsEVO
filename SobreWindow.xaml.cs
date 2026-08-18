@@ -17,10 +17,12 @@ namespace ElsEvo
 
             AplicarIdioma();
 
-            // Versão estável: sem badge BETA, texto fixo "Versão estável: X.X" (não usa o
-            // número completo de build, só o número principal — ver AppVersion.Numero).
+            // Versão estável: sem badge BETA. O título grande (TxtVersao) continua
+            // mostrando o número curto (AppVersion.Numero, ex.: "1.0"), mas aqui embaixo
+            // mostramos o número COMPLETO com patch (AppVersion.VersaoParaAtualizacao,
+            // ex.: "1.0.1"), pra quem quiser conferir a build exata instalada.
             BadgeBeta.Visibility = Visibility.Collapsed;
-            TxtVersaoBeta.Text = $"Versão estável: {AppVersion.Numero}";
+            TxtVersaoBeta.Text = $"Versão estável: {AppVersion.VersaoParaAtualizacao}";
             TxtVersaoBeta.Visibility = Visibility.Visible;
         }
 

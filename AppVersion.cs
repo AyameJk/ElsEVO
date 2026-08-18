@@ -16,6 +16,6 @@ namespace ElsEvo
         /// Sempre com 3 dígitos (Major.Minor.Build), pra bater exatamente com o formato
         /// usado no version.json e não gerar falso positivo de atualização disponível.
         /// </summary>
-        public const string VersaoParaAtualizacao = "1.0.0";
+        public const string VersaoParaAtualizacao = "1.0.1";
     }
 }
