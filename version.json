@@ -1,5 +1,5 @@
 {
-  "versao": "1.0.0",
-  "url": "https://github.com/AyameJk/ElsEvo/releases/download/v1.0.0/ElsEvo-Setup.exe",
-  "notas": "  Primeira versão estável pública do ElsEvo."
+  "versao": "1.0.1",
+  "url": "https://github.com/AyameJk/ElsEvo/releases/download/v1.0.1/ElsEvo-Setup.exe",
+  "notas": "Correção de bug/Teste de atualização automática"
 }
