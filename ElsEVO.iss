@@ -5,7 +5,7 @@
 #define MyAppName "ElsEvo"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "AyameJJ"
-#define MyAppURL "https://github.com/AyameJk/ElsEvo"
+#define MyAppURL "https://www.example.com/"
 #define MyAppExeName "ElsEvo.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"
@@ -69,8 +69,6 @@ VersionInfoCopyright=Copyright (C) 2026 {#MyAppPublisher}
 VersionInfoDescription=ElsEvo Setup
 VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
-; Deixa o idioma dos metadados do arquivo como Português do Brasil, em vez de "Neutro".
-VersionInfoLanguage=Portuguese (Brazilian)
 
 ; ===== Fechamento automático do ElsEvo durante a atualização =====
 ; AppMutex faz o Inno Setup checar (via Restart Manager do Windows) se um processo com
