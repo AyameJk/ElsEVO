@@ -1,5 +1,5 @@
 {
-  "versao": "1.0.1",
-  "url": "https://github.com/AyameJk/ElsEvo/releases/download/v1.0.1/ElsEvo-Setup.exe",
-  "notas": "Correção de bug/Teste de atualização automática"
+  "versao": "1.0.2",
+  "url": "https://github.com/AyameJk/ElsEvo/releases/download/v1.0.2/ElsEvo-Setup.exe",
+  "notas": "O que mudou nessa versão:\r\n\r\n• O fluxo de atualização automática agora usa uma janela própria do ElsEvo (seguindo o tema Claro/Escuro do app) em vez do aviso padrão do Windows.\r\n\r\n• A instalação de novas versões passou a rodar em segundo plano, sem exigir cliques — o app fecha, atualiza e reabre sozinho.\r\n\r\n\r\n<img width=\"546\" height=\"569\" alt=\"576px-Skill_Cutin_-_Lord_Knight_(Trans)\" src=\"https://github.com/user-attachments/assets/2694ee29-591a-4412-a60e-be3538d6d19d\" />\r\n\r\n> \"Eu serei o cavaleiro do rei... e o escudo de todos!\""
 }
