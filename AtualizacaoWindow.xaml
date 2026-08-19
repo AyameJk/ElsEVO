@@ -45,6 +45,44 @@
             </Style.Triggers>
         </Style>
 
+        <!-- ===== Scrollbar fina e arredondada (substitui a scrollbar cinza padrão do
+             Windows, que destoa do resto da interface flat/moderna) ===== -->
+        <Style x:Key="PolegarScrollbarModerno" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="{DynamicResource CorBorda}"
+                                CornerRadius="3"
+                                Opacity="0.7"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True" Margin="0,4">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False"/>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource PolegarScrollbarModerno}" Width="6"/>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <Grid Margin="18">
@@ -78,7 +116,8 @@
             </Border>
 
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="Atualização disponível"
+                <TextBlock x:Name="TxtTitulo"
+                           Text="Atualização disponível"
                            Foreground="{DynamicResource CorTextoPrimario}"
                            FontSize="15"
                            FontWeight="Bold"/>
@@ -90,7 +129,9 @@
             </StackPanel>
         </Grid>
 
-        <!-- Notas da release -->
+        <!-- Notas da release — montadas dinamicamente no code-behind, na MESMA ORDEM
+             em que texto/imagem/citação aparecem no Markdown original (ver PrepararNotas
+             em AtualizacaoWindow.xaml.cs). -->
         <Border Grid.Row="1"
                 x:Name="ContainerNotas"
                 Background="{DynamicResource CorFundoCartao}"
@@ -101,42 +142,7 @@
                 Margin="0,0,0,10"
                 MaxHeight="320">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-
-                    <!-- Imagem de capa (baixada de verdade da URL do <img> nas notas —
-                         não mostramos a tag HTML crua). Some sozinha se não houver
-                         imagem nas notas, ou se o download falhar por qualquer motivo. -->
-                    <Border x:Name="ContainerImagem"
-                            CornerRadius="6"
-                            ClipToBounds="True"
-                            Margin="0,0,0,10"
-                            MaxHeight="220"
-                            Visibility="Collapsed">
-                        <Image x:Name="ImgCapa" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
-                    </Border>
-
-                    <!-- Citação (linha que começava com "> " no Markdown original),
-                         destacada em itálico com uma barrinha lateral, em vez do ">" cru. -->
-                    <Border x:Name="ContainerCitacao"
-                            BorderBrush="#0078D4"
-                            BorderThickness="3,0,0,0"
-                            Padding="10,4"
-                            Margin="0,0,0,10"
-                            Visibility="Collapsed">
-                        <TextBlock x:Name="TxtCitacao"
-                                   Foreground="{DynamicResource CorTextoPrimario}"
-                                   FontSize="12"
-                                   FontStyle="Italic"
-                                   TextWrapping="Wrap"/>
-                    </Border>
-
-                    <TextBlock x:Name="TxtNotas"
-                               Foreground="{DynamicResource CorTextoSecundario}"
-                               FontSize="12"
-                               TextWrapping="Wrap"
-                               LineHeight="17"/>
-
-                </StackPanel>
+                <StackPanel x:Name="PainelNotas"/>
             </ScrollViewer>
         </Border>
 
@@ -157,7 +163,8 @@
                            Foreground="#F5C542"
                            VerticalAlignment="Top"
                            Margin="0,1,8,0"/>
-                <TextBlock Text="Essa é uma versão BETA (canal de testes) — pode ter bugs que a versão estável não tem. Ela será instalada por cima da sua instalação atual."
+                <TextBlock x:Name="TxtAvisoBeta"
+                           Text="Essa é uma versão BETA (canal de testes) — pode ter bugs que a versão estável não tem. Ela será instalada por cima da sua instalação atual."
                            Foreground="#E3D2A8"
                            FontSize="11"
                            TextWrapping="Wrap"/>
@@ -165,6 +172,7 @@
         </Border>
 
         <TextBlock Grid.Row="3"
+                   x:Name="TxtAvisoFechamento"
                    Text="O ElsEvo vai fechar durante a instalação e reabrir sozinho automaticamente ao terminar."
                    Foreground="{DynamicResource CorTextoSecundario}"
                    FontSize="11"

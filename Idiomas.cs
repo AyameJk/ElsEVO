@@ -63,7 +63,14 @@ namespace ElsEvo
                 ["GrpAtualizacoes"] = "ATUALIZAÇÕES",
                 ["ChkBuscarAtualizacoes"] = "Buscar por atualizações ao iniciar",
                 ["ChkBetaApenas"] = "Beta apenas",
-                ["TxtAvisoBetaApenas"] = "Desmarcado: o programa busca apenas versões estáveis"
+                ["TxtAvisoBetaApenas"] = "Desmarcado: o programa busca apenas versões estáveis",
+                ["AtualizacaoTitulo"] = "Atualização disponível",
+                ["AtualizacaoVersaoDisponivel"] = "Versão {0} disponível",
+                ["AtualizacaoAvisoBeta"] = "Essa é uma versão BETA (canal de testes) — pode ter bugs que a versão estável não tem. Ela será instalada por cima da sua instalação atual.",
+                ["AtualizacaoAvisoFechamento"] = "O ElsEvo vai fechar durante a instalação e reabrir sozinho automaticamente ao terminar.",
+                ["AtualizacaoBtnAgoraNao"] = "Agora não",
+                ["AtualizacaoBtnAtualizar"] = "Atualizar agora",
+                ["AtualizacaoSemNotas"] = "Sem notas de lançamento adicionais para esta versão."
             },
             ["en"] = new()
             {
@@ -113,7 +120,14 @@ namespace ElsEvo
                 ["GrpAtualizacoes"] = "UPDATES",
                 ["ChkBuscarAtualizacoes"] = "Check for updates on startup",
                 ["ChkBetaApenas"] = "Beta only",
-                ["TxtAvisoBetaApenas"] = "Unchecked: the program only looks for stable releases"
+                ["TxtAvisoBetaApenas"] = "Unchecked: the program only looks for stable releases",
+                ["AtualizacaoTitulo"] = "Update available",
+                ["AtualizacaoVersaoDisponivel"] = "Version {0} available",
+                ["AtualizacaoAvisoBeta"] = "This is a BETA version (testing channel) — it may have bugs the stable version doesn't. It will be installed over your current installation.",
+                ["AtualizacaoAvisoFechamento"] = "ElsEvo will close during installation and reopen automatically on its own when finished.",
+                ["AtualizacaoBtnAgoraNao"] = "Not now",
+                ["AtualizacaoBtnAtualizar"] = "Update now",
+                ["AtualizacaoSemNotas"] = "No additional release notes for this version."
             },
             ["zh"] = new()
             {
@@ -163,7 +177,14 @@ namespace ElsEvo
                 ["GrpAtualizacoes"] = "更新",
                 ["ChkBuscarAtualizacoes"] = "启动时检查更新",
                 ["ChkBetaApenas"] = "仅测试版",
-                ["TxtAvisoBetaApenas"] = "取消勾选:程序只查找稳定版本"
+                ["TxtAvisoBetaApenas"] = "取消勾选:程序只查找稳定版本",
+                ["AtualizacaoTitulo"] = "有可用更新",
+                ["AtualizacaoVersaoDisponivel"] = "版本 {0} 可用",
+                ["AtualizacaoAvisoBeta"] = "这是一个测试版(BETA)——可能存在稳定版没有的漏洞。它将安装在您当前的安装之上。",
+                ["AtualizacaoAvisoFechamento"] = "ElsEvo 将在安装过程中关闭,完成后会自动重新打开。",
+                ["AtualizacaoBtnAgoraNao"] = "暂不更新",
+                ["AtualizacaoBtnAtualizar"] = "立即更新",
+                ["AtualizacaoSemNotas"] = "此版本没有其他发行说明。"
             }
         };
 
