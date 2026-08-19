@@ -99,13 +99,44 @@
                 CornerRadius="8"
                 Padding="10"
                 Margin="0,0,0,10"
-                MaxHeight="140">
+                MaxHeight="320">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <TextBlock x:Name="TxtNotas"
-                           Foreground="{DynamicResource CorTextoSecundario}"
-                           FontSize="12"
-                           TextWrapping="Wrap"
-                           LineHeight="17"/>
+                <StackPanel>
+
+                    <!-- Imagem de capa (baixada de verdade da URL do <img> nas notas —
+                         não mostramos a tag HTML crua). Some sozinha se não houver
+                         imagem nas notas, ou se o download falhar por qualquer motivo. -->
+                    <Border x:Name="ContainerImagem"
+                            CornerRadius="6"
+                            ClipToBounds="True"
+                            Margin="0,0,0,10"
+                            MaxHeight="220"
+                            Visibility="Collapsed">
+                        <Image x:Name="ImgCapa" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    </Border>
+
+                    <!-- Citação (linha que começava com "> " no Markdown original),
+                         destacada em itálico com uma barrinha lateral, em vez do ">" cru. -->
+                    <Border x:Name="ContainerCitacao"
+                            BorderBrush="#0078D4"
+                            BorderThickness="3,0,0,0"
+                            Padding="10,4"
+                            Margin="0,0,0,10"
+                            Visibility="Collapsed">
+                        <TextBlock x:Name="TxtCitacao"
+                                   Foreground="{DynamicResource CorTextoPrimario}"
+                                   FontSize="12"
+                                   FontStyle="Italic"
+                                   TextWrapping="Wrap"/>
+                    </Border>
+
+                    <TextBlock x:Name="TxtNotas"
+                               Foreground="{DynamicResource CorTextoSecundario}"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               LineHeight="17"/>
+
+                </StackPanel>
             </ScrollViewer>
         </Border>
 
