@@ -3,7 +3,7 @@
 ; Non-commercial use only.
 
 #define MyAppName "ElsEvo"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.3"
 #define MyAppPublisher "AyameJJ"
 #define MyAppURL "https://www.example.com/"
 #define MyAppExeName "ElsEvo.exe"
