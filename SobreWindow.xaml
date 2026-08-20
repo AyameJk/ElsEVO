@@ -90,7 +90,7 @@
                            Margin="0,0,0,12"/>
 
                 <TextBlock x:Name="TxtRotuloAutor" Foreground="{DynamicResource CorTextoSecundario}" FontSize="11" FontWeight="SemiBold" Text="Autor:"/>
-                <TextBlock Foreground="{DynamicResource CorTextoPrimario}" FontSize="12" Text="AyameJJ" Margin="0,2,0,0"/>
+                <TextBlock Foreground="{DynamicResource CorTextoPrimario}" FontSize="12" Text="AyameJk" Margin="0,2,0,0"/>
 
                 <TextBlock x:Name="TxtVersaoBeta"
                            Foreground="{DynamicResource CorTextoSecundario}"

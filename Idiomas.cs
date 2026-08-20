@@ -70,7 +70,13 @@ namespace ElsEvo
                 ["AtualizacaoAvisoFechamento"] = "O ElsEvo vai fechar durante a instalação e reabrir sozinho automaticamente ao terminar.",
                 ["AtualizacaoBtnAgoraNao"] = "Agora não",
                 ["AtualizacaoBtnAtualizar"] = "Atualizar agora",
-                ["AtualizacaoSemNotas"] = "Sem notas de lançamento adicionais para esta versão."
+                ["AtualizacaoSemNotas"] = "Sem notas de lançamento adicionais para esta versão.",
+                ["AtualizacaoConcluidaTitulo"] = "Atualização concluída",
+                ["AtualizacaoConcluidaDetalhe"] = "O ElsEvo foi atualizado com sucesso para a versão {0}.",
+                ["IdiomaPortugues"] = "Português",
+                ["IdiomaIngles"] = "Inglês",
+                ["IdiomaChines"] = "Chinês",
+                ["SobreVersaoEstavel"] = "Versão estável: {0}"
             },
             ["en"] = new()
             {
@@ -127,7 +133,13 @@ namespace ElsEvo
                 ["AtualizacaoAvisoFechamento"] = "ElsEvo will close during installation and reopen automatically on its own when finished.",
                 ["AtualizacaoBtnAgoraNao"] = "Not now",
                 ["AtualizacaoBtnAtualizar"] = "Update now",
-                ["AtualizacaoSemNotas"] = "No additional release notes for this version."
+                ["AtualizacaoSemNotas"] = "No additional release notes for this version.",
+                ["AtualizacaoConcluidaTitulo"] = "Update complete",
+                ["AtualizacaoConcluidaDetalhe"] = "ElsEvo was successfully updated to version {0}.",
+                ["IdiomaPortugues"] = "Portuguese",
+                ["IdiomaIngles"] = "English",
+                ["IdiomaChines"] = "Chinese",
+                ["SobreVersaoEstavel"] = "Stable version: {0}"
             },
             ["zh"] = new()
             {
@@ -184,7 +196,13 @@ namespace ElsEvo
                 ["AtualizacaoAvisoFechamento"] = "ElsEvo 将在安装过程中关闭,完成后会自动重新打开。",
                 ["AtualizacaoBtnAgoraNao"] = "暂不更新",
                 ["AtualizacaoBtnAtualizar"] = "立即更新",
-                ["AtualizacaoSemNotas"] = "此版本没有其他发行说明。"
+                ["AtualizacaoSemNotas"] = "此版本没有其他发行说明。",
+                ["AtualizacaoConcluidaTitulo"] = "更新完成",
+                ["AtualizacaoConcluidaDetalhe"] = "ElsEvo 已成功更新到版本 {0}。",
+                ["IdiomaPortugues"] = "葡萄牙语",
+                ["IdiomaIngles"] = "英语",
+                ["IdiomaChines"] = "中文",
+                ["SobreVersaoEstavel"] = "稳定版本: {0}"
             }
         };
 

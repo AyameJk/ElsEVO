@@ -91,6 +91,9 @@ namespace ElsEvo
             TxtAvisoLogs.Text = Idiomas.T("TxtAvisoLogs");
 
             GrpIdiomas.Header = Idiomas.T("GrpIdiomas");
+            ItemIdiomaPortugues.Content = Idiomas.T("IdiomaPortugues");
+            ItemIdiomaIngles.Content = Idiomas.T("IdiomaIngles");
+            ItemIdiomaChines.Content = Idiomas.T("IdiomaChines");
             GrpTema.Header = Idiomas.T("GrpTema");
             RadioTemaClaro.Content = Idiomas.T("RadioClaro");
             RadioTemaEscuro.Content = Idiomas.T("RadioEscuro");

@@ -44,9 +44,24 @@ namespace ElsEvo
                 ConfigurarBandeja();
                 BadgeBeta.Visibility = Visibility.Collapsed; // versão estável — badge BETA nunca aparece aqui
 
-                // Checagem de atualização: roda em segundo plano, sem travar a abertura da
-                // janela. Se achar uma versão nova, ela mesma cuida de perguntar ao usuário.
-                _ = VerificarAtualizacaoAsync();
+                // Se o app acabou de reabrir sozinho por causa de um update (ver
+                // ReabrirAppAtualizadoEFechar, que passa esse argumento), mostra a
+                // confirmação de sucesso em vez de checar atualização de novo — checar de
+                // novo logo em seguida seria redundante (a gente já sabe que atualizou).
+                bool acabouDeAtualizar = Environment.GetCommandLineArgs()
+                    .Any(arg => arg.Equals("--atualizado", StringComparison.OrdinalIgnoreCase));
+
+                if (acabouDeAtualizar)
+                {
+                    var janelaSucesso = new AtualizacaoConcluidaWindow { Owner = this };
+                    janelaSucesso.ShowDialog();
+                }
+                else
+                {
+                    // Checagem de atualização: roda em segundo plano, sem travar a abertura
+                    // da janela. Se achar uma versão nova, ela mesma cuida de perguntar ao usuário.
+                    _ = VerificarAtualizacaoAsync();
+                }
             };
 
             Closing += MainWindow_Closing;
@@ -480,114 +495,158 @@ namespace ElsEvo
         {
             string caminhoInstalador = Path.Combine(Path.GetTempPath(), "ElsEvo-Setup.exe");
 
-            ProgressoContainer.Visibility = Visibility.Visible;
-            BarraProgresso.Value = 0;
-            TxtProgresso.Text = "Baixando atualização... 0%";
-
-            bool baixouComSucesso = false;
+            // Bloqueia as ações principais enquanto a atualização roda — o usuário não
+            // pode clicar em "Aplicar e Jogar" (ou abrir "Gerenciar Mods") no meio do
+            // download/instalação, pra não arriscar mexer em arquivos ao mesmo tempo que
+            // o instalador. Reabilitado no finally, cobrindo TODO caminho de saída
+            // (sucesso, erro de rede, erro do instalador) — só não reabilita se o app já
+            // tiver sido fechado com sucesso (Application.Current.Shutdown()).
+            BtnJogar.IsEnabled = false;
+            BtnGerenciarMods.IsEnabled = false;
+            bool appVaiFecharComSucesso = false;
 
             try
             {
-                using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-                using var resposta = await http.GetAsync(atualizacao.UrlInstalador, HttpCompletionOption.ResponseHeadersRead);
-                resposta.EnsureSuccessStatusCode();
+                ProgressoContainer.Visibility = Visibility.Visible;
+                BarraProgresso.Value = 0;
+                TxtProgresso.Text = "Baixando atualização... 0%";
 
-                long? tamanhoTotal = resposta.Content.Headers.ContentLength;
+                bool baixouComSucesso = false;
 
-                await using var streamOrigem = await resposta.Content.ReadAsStreamAsync();
-                await using var streamDestino = File.Create(caminhoInstalador);
-
-                var buffer = new byte[81920];
-                long totalLido = 0;
-                int lido;
-
-                while ((lido = await streamOrigem.ReadAsync(buffer)) > 0)
+                try
                 {
-                    await streamDestino.WriteAsync(buffer.AsMemory(0, lido));
-                    totalLido += lido;
+                    using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+                    using var resposta = await http.GetAsync(atualizacao.UrlInstalador, HttpCompletionOption.ResponseHeadersRead);
+                    resposta.EnsureSuccessStatusCode();
 
-                    if (tamanhoTotal is > 0)
+                    long? tamanhoTotal = resposta.Content.Headers.ContentLength;
+
+                    await using var streamOrigem = await resposta.Content.ReadAsStreamAsync();
+                    await using var streamDestino = File.Create(caminhoInstalador);
+
+                    var buffer = new byte[81920];
+                    long totalLido = 0;
+                    int lido;
+
+                    while ((lido = await streamOrigem.ReadAsync(buffer)) > 0)
                     {
-                        int percentual = (int)(totalLido * 100 / tamanhoTotal.Value);
-                        BarraProgresso.Value = percentual;
-                        TxtProgresso.Text = $"Baixando atualização... {percentual}%";
+                        await streamDestino.WriteAsync(buffer.AsMemory(0, lido));
+                        totalLido += lido;
+
+                        if (tamanhoTotal is > 0)
+                        {
+                            int percentual = (int)(totalLido * 100 / tamanhoTotal.Value);
+                            BarraProgresso.Value = percentual;
+                            TxtProgresso.Text = $"Baixando atualização... {percentual}%";
+                        }
                     }
+
+                    baixouComSucesso = true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Não foi possível baixar a atualização automaticamente:\n{ex.Message}\n\n" +
+                        "O ElsEvo vai continuar funcionando normalmente na versão atual. Você pode " +
+                        "tentar de novo mais tarde, ou baixar manualmente pela página de Releases no GitHub.",
+                        "Falha ao atualizar", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
 
-                baixouComSucesso = true;
-            }
-            catch (Exception ex)
-            {
-                ProgressoContainer.Visibility = Visibility.Collapsed;
-                MessageBox.Show(
-                    $"Não foi possível baixar a atualização automaticamente:\n{ex.Message}\n\n" +
-                    "O ElsEvo vai continuar funcionando normalmente na versão atual. Você pode " +
-                    "tentar de novo mais tarde, ou baixar manualmente pela página de Releases no GitHub.",
-                    "Falha ao atualizar", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+                if (!baixouComSucesso)
+                    return;
 
-            if (!baixouComSucesso)
-                return;
+                // A partir daqui a barra continua visível, agora mostrando "Instalando..." —
+                // o usuário não interage com o instalador (roda sem assistente), então esse
+                // texto na própria janela do ElsEvo é o único feedback visual que ele tem.
+                // Como o Inno Setup silencioso não reporta progresso real de volta, a barra
+                // fica travada em 100% — pra não parecer que travou/quebrou, os pontinhos no
+                // final do texto animam sozinhos enquanto espera (só isso muda, a barra não).
+                BarraProgresso.Value = 100;
 
-            // A partir daqui a barra continua visível, agora mostrando "Instalando..." —
-            // o usuário não interage com o instalador (roda sem assistente), então esse
-            // texto na própria janela do ElsEvo é o único feedback visual que ele tem.
-            BarraProgresso.Value = 100;
-            TxtProgresso.Text = "Instalando atualização, aguarde...";
-
-            int codigoSaida;
-            try
-            {
-                // /VERYSILENT: instala sem NENHUMA janela do assistente (nem barra de
-                // progresso própria do Inno Setup — por isso mostramos a nossa).
-                // /SUPPRESSMSGBOXES: qualquer caixa de diálogo do instalador (avisos,
-                // confirmações) é respondida automaticamente com a opção padrão, sem
-                // travar esperando clique.
-                // /NORESTART: nunca reinicia o Windows sozinho, mesmo que ache necessário.
-                // /SP-: pula a telinha inicial (irrelevante em modo silencioso, mas
-                // mantido por consistência com o fluxo anterior).
-                var processoInstalador = Process.Start(new ProcessStartInfo
+                var timerPontinhos = new System.Windows.Threading.DispatcherTimer
                 {
-                    FileName = caminhoInstalador,
-                    Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-",
-                    UseShellExecute = true
-                });
+                    Interval = TimeSpan.FromMilliseconds(450)
+                };
+                int quantidadePontos = 0;
+                timerPontinhos.Tick += (_, _) =>
+                {
+                    quantidadePontos = (quantidadePontos + 1) % 4;
+                    TxtProgresso.Text = "Instalando atualização, aguarde" + new string('.', quantidadePontos);
+                };
+                timerPontinhos.Start();
 
-                if (processoInstalador == null)
-                    throw new InvalidOperationException("Não foi possível iniciar o processo do instalador.");
+                int codigoSaida;
+                try
+                {
+                    // /VERYSILENT: instala sem NENHUMA janela do assistente (nem barra de
+                    // progresso própria do Inno Setup — por isso mostramos a nossa).
+                    // /SUPPRESSMSGBOXES: qualquer caixa de diálogo do instalador (avisos,
+                    // confirmações) é respondida automaticamente com a opção padrão, sem
+                    // travar esperando clique.
+                    // /NORESTART: nunca reinicia o Windows sozinho, mesmo que ache necessário.
+                    // /SP-: pula a telinha inicial (irrelevante em modo silencioso, mas
+                    // mantido por consistência com o fluxo anterior).
+                    //
+                    // ATENÇÃO: como o destino padrão é Program Files, o Windows exige
+                    // elevação — o UAC ("Deseja permitir que este app faça alterações no
+                    // dispositivo?") ainda aparece mesmo com /VERYSILENT, isso é decisão
+                    // do Windows, não do instalador, e não dá pra suprimir por código.
+                    var processoInstalador = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = caminhoInstalador,
+                        Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-",
+                        UseShellExecute = true
+                    });
 
-                // Espera o instalador terminar DE VERDADE antes de continuar — sem isso o
-                // app fecharia ou tentaria reabrir antes dos arquivos serem substituídos.
-                await Task.Run(() => processoInstalador.WaitForExit());
-                codigoSaida = processoInstalador.ExitCode;
+                    if (processoInstalador == null)
+                        throw new InvalidOperationException("Não foi possível iniciar o processo do instalador.");
+
+                    // Espera o instalador terminar DE VERDADE antes de continuar — sem isso o
+                    // app fecharia ou tentaria reabrir antes dos arquivos serem substituídos.
+                    await Task.Run(() => processoInstalador.WaitForExit());
+                    codigoSaida = processoInstalador.ExitCode;
+                }
+                catch (Exception ex)
+                {
+                    timerPontinhos.Stop();
+                    MessageBox.Show(
+                        $"O instalador foi baixado, mas não foi possível executá-lo automaticamente:\n{ex.Message}\n\n" +
+                        $"Você pode rodar ele manualmente em:\n{caminhoInstalador}",
+                        "Falha ao iniciar instalador", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                timerPontinhos.Stop();
+
+                // Código de saída do Inno Setup: 0 = sucesso. Qualquer outro valor indica que
+                // algo deu errado (ex.: 5 = falha na instalação, 6 = cancelado pelo Restart
+                // Manager) — como não tem assistente visível, o usuário não veria isso sozinho,
+                // então mostramos um aviso explícito em vez de simplesmente reabrir o app.
+                if (codigoSaida != 0)
+                {
+                    MessageBox.Show(
+                        $"O instalador terminou com um erro (código {codigoSaida}) e a atualização pode não " +
+                        "ter sido concluída corretamente.\n\n" +
+                        "O ElsEvo vai continuar/reabrir normalmente. Se algo parecer errado, tente " +
+                        "baixar e instalar manualmente pela página de Releases no GitHub.",
+                        "Atenção — instalação da atualização", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
+                // A partir daqui o app vai fechar de propósito (ReabrirAppAtualizadoEFechar
+                // chama Application.Current.Shutdown() no final) — não faz sentido reabilitar
+                // os botões nesse caminho, a janela já não vai mais existir.
+                appVaiFecharComSucesso = true;
+                ReabrirAppAtualizadoEFechar();
             }
-            catch (Exception ex)
+            finally
             {
-                ProgressoContainer.Visibility = Visibility.Collapsed;
-                MessageBox.Show(
-                    $"O instalador foi baixado, mas não foi possível executá-lo automaticamente:\n{ex.Message}\n\n" +
-                    $"Você pode rodar ele manualmente em:\n{caminhoInstalador}",
-                    "Falha ao iniciar instalador", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
+                if (!appVaiFecharComSucesso)
+                {
+                    ProgressoContainer.Visibility = Visibility.Collapsed;
+                    BtnJogar.IsEnabled = true;
+                    BtnGerenciarMods.IsEnabled = true;
+                }
             }
-
-            ProgressoContainer.Visibility = Visibility.Collapsed;
-
-            // Código de saída do Inno Setup: 0 = sucesso. Qualquer outro valor indica que
-            // algo deu errado (ex.: 5 = falha na instalação, 6 = cancelado pelo Restart
-            // Manager) — como não tem assistente visível, o usuário não veria isso sozinho,
-            // então mostramos um aviso explícito em vez de simplesmente reabrir o app.
-            if (codigoSaida != 0)
-            {
-                MessageBox.Show(
-                    $"O instalador terminou com um erro (código {codigoSaida}) e a atualização pode não " +
-                    "ter sido concluída corretamente.\n\n" +
-                    "O ElsEvo vai continuar/reabrir normalmente. Se algo parecer errado, tente " +
-                    "baixar e instalar manualmente pela página de Releases no GitHub.",
-                    "Atenção — instalação da atualização", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-
-            ReabrirAppAtualizadoEFechar();
         }
 
         /// <summary>
@@ -602,21 +661,50 @@ namespace ElsEvo
         /// </summary>
         private void ReabrirAppAtualizadoEFechar()
         {
-            string? caminhoExeNovo = ObterCaminhoExeInstalado()
-                                      ?? Process.GetCurrentProcess().MainModule?.FileName;
+            string? caminhoRegistro = ObterCaminhoExeInstalado();
+            string? caminhoProcessoAtual = Process.GetCurrentProcess().MainModule?.FileName;
+            string? caminhoExeNovo = caminhoRegistro ?? caminhoProcessoAtual;
+
+            // Log de diagnóstico temporário — grava em %LocalAppData%\ElsEvo\update-log.txt
+            // exatamente o que essa etapa encontrou/fez, porque a janela de erro (se
+            // aparecer) pode passar rápido demais na tela durante o fechamento do app.
+            // Não precisa de nenhuma configuração pra funcionar; se a escrita falhar por
+            // qualquer motivo, ignora silenciosamente (não é crítico pro fluxo em si).
+            void Log(string linha)
+            {
+                try
+                {
+                    Directory.CreateDirectory(Paths.LocalApplicationData);
+                    string caminhoLog = Path.Combine(Paths.LocalApplicationData, "update-log.txt");
+                    File.AppendAllText(caminhoLog, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {linha}\n");
+                }
+                catch { }
+            }
+
+            Log("===== Iniciando ReabrirAppAtualizadoEFechar =====");
+            Log($"Caminho via registro: {caminhoRegistro ?? "(não encontrado)"}");
+            Log($"Caminho do processo atual: {caminhoProcessoAtual ?? "(nulo)"}");
+            Log($"Caminho escolhido: {caminhoExeNovo ?? "(nenhum)"}");
+            Log($"Arquivo existe? {(!string.IsNullOrEmpty(caminhoExeNovo) && File.Exists(caminhoExeNovo))}");
 
             try
             {
                 if (!string.IsNullOrEmpty(caminhoExeNovo) && File.Exists(caminhoExeNovo))
                 {
-                    Process.Start(new ProcessStartInfo
+                    var processoNovo = Process.Start(new ProcessStartInfo
                     {
                         FileName = caminhoExeNovo,
+                        Arguments = "--atualizado",
                         UseShellExecute = true
                     });
+
+                    Log(processoNovo != null
+                        ? $"Process.Start retornou um processo válido (Id={processoNovo.Id})."
+                        : "Process.Start retornou null (nenhuma exceção lançada).");
                 }
                 else
                 {
+                    Log("Nenhum caminho válido encontrado — mostrando aviso pro usuário.");
                     MessageBox.Show(
                         "A atualização foi instalada, mas não foi possível localizar o executável " +
                         "novo para reabrir automaticamente. Abra o ElsEvo manualmente.",
@@ -625,6 +713,7 @@ namespace ElsEvo
             }
             catch (Exception ex)
             {
+                Log($"EXCEÇÃO ao tentar reabrir: {ex}");
                 MessageBox.Show(
                     $"A atualização foi instalada, mas não foi possível reabrir o ElsEvo automaticamente:\n{ex.Message}\n\n" +
                     "Abra o ElsEvo manualmente.",
@@ -632,6 +721,7 @@ namespace ElsEvo
             }
             finally
             {
+                Log("Chamando Application.Current.Shutdown().");
                 Application.Current.Shutdown();
             }
         }

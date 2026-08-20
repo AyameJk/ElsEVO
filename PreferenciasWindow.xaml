@@ -210,9 +210,9 @@
 
                     <GroupBox x:Name="GrpIdiomas" Header="IDIOMAS">
                         <ComboBox x:Name="CmbIdioma" Height="28" SelectedIndex="0" SelectionChanged="CmbIdioma_SelectionChanged">
-                            <ComboBoxItem Content="Português"/>
-                            <ComboBoxItem Content="Inglês"/>
-                            <ComboBoxItem Content="Chinês"/>
+                            <ComboBoxItem x:Name="ItemIdiomaPortugues" Content="Português"/>
+                            <ComboBoxItem x:Name="ItemIdiomaIngles" Content="Inglês"/>
+                            <ComboBoxItem x:Name="ItemIdiomaChines" Content="Chinês"/>
                         </ComboBox>
                     </GroupBox>
 

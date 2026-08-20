@@ -22,7 +22,7 @@ namespace ElsEvo
             // mostramos o número COMPLETO com patch (AppVersion.VersaoParaAtualizacao,
             // ex.: "1.0.1"), pra quem quiser conferir a build exata instalada.
             BadgeBeta.Visibility = Visibility.Collapsed;
-            TxtVersaoBeta.Text = $"Versão estável: {AppVersion.VersaoParaAtualizacao}";
+            TxtVersaoBeta.Text = string.Format(Idiomas.T("SobreVersaoEstavel"), AppVersion.VersaoParaAtualizacao);
             TxtVersaoBeta.Visibility = Visibility.Visible;
         }
 
