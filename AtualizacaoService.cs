@@ -7,9 +7,8 @@ using System.Threading.Tasks;
 namespace ElsEvo
 {
     /// <summary>
-    /// Conteúdo do version.json — UM SÓ objeto por repositório (a separação estável/beta
-    /// não é mais uma chave dentro do mesmo arquivo, e sim dois repositórios diferentes,
-    /// cada um com seu próprio version.json na raiz).
+    /// Conteúdo do version.json — um objeto só por repositório (a separação estável/beta
+    /// é por repositório, não por chave dentro do mesmo arquivo).
     /// </summary>
     public class InfoVersao
     {
@@ -30,27 +29,29 @@ namespace ElsEvo
         public string UrlInstalador { get; set; } = string.Empty;
         public string Notas { get; set; } = string.Empty;
 
-        /// <summary>true quando essa atualização veio do canal BETA (repositório irmão),
-        /// não do canal estável — usado pra avisar o usuário antes de instalar por cima.</summary>
+        /// <summary>true quando essa atualização veio do canal BETA — usado pra avisar o
+        /// usuário antes de instalar por cima de uma instalação estável (ou vice-versa).</summary>
         public bool EhCanalBeta { get; set; }
     }
 
     /// <summary>
     /// Verifica se existe uma versão mais nova do ElsEvo publicada. Cada canal é um
     /// REPOSITÓRIO GITHUB SEPARADO, cada um com seu próprio version.json na raiz:
-    ///   - Canal estável (esta build): repositório ElsEvo
-    ///   - Canal beta (build irmã):    repositório ElsEvoBeta
+    ///   - Canal estável (esta build):  repositório ElsEvo
+    ///   - Canal beta (build irmã):     repositório ElsEvoBeta
     ///
-    /// ATENÇÃO: os nomes reais dos repositórios são "ElsEvo" e "ElsEvoBeta" (essa
-    /// capitalização exata) — NÃO "ElsEVO"/"ElsEVOBeta". O GitHub redireciona URLs da
-    /// página normal (github.com/...) ignorando maiúscula/minúscula, mas o
-    /// raw.githubusercontent.com pode não redirecionar da mesma forma — por isso é
-    /// essencial usar aqui exatamente o nome real do repositório, sem depender de
-    /// redirecionamento.
+    /// IMPORTANTE — capitalização: os nomes reais dos repositórios são "ElsEvo" e
+    /// "ElsEvoBeta" (exatamente essa capitalização, não "ElsEvo"/"ElsEvoBeta" com maiúsculas diferentes). A página
+    /// normal do GitHub redireciona ignorando maiúscula/minúscula, mas o
+    /// raw.githubusercontent.com pode não fazer esse redirecionamento de forma confiável
+    /// — usar a capitalização errada aqui causa falha SILENCIOSA na checagem (a exceção
+    /// cai no catch genérico do VerificarAsync e o app simplesmente nunca acusa
+    /// atualização nenhuma, sem erro visível nenhum).
     ///
-    /// Com "Beta apenas" DESMARCADO (padrão nesta build estável), o app consulta só o
-    /// próprio canal. Com "Beta apenas" MARCADO, o app passa a consultar o repositório
-    /// irmão e oferece baixar/instalar a build beta por cima da instalação estável atual.
+    /// "Beta apenas" DESMARCADO -> consulta o canal estável (repositório ElsEvo — é o que
+    /// esta build já é, por padrão). "Beta apenas" MARCADO -> consulta o canal beta
+    /// (repositório ElsEvoBeta) e oferece baixar/instalar a build beta por cima desta
+    /// instalação estável.
     /// </summary>
     public static class AtualizacaoService
     {
@@ -69,9 +70,9 @@ namespace ElsEvo
         /// Retorna os dados da atualização se houver uma versão mais nova que a atual no
         /// canal certo (estável ou beta, conforme "Beta apenas" nas Configurações).
         /// Retorna null se já estiver na versão mais recente, ou se a checagem falhar por
-        /// qualquer motivo (sem internet, GitHub fora do ar, JSON mudou de formato, etc.)
-        /// — checagem de atualização NUNCA deve travar ou incomodar o usuário ao abrir o
-        /// app, então qualquer erro aqui é silencioso.
+        /// qualquer motivo (sem internet, GitHub fora do ar, JSON mudou de formato,
+        /// capitalização errada de URL, etc.) — checagem de atualização NUNCA deve travar
+        /// ou incomodar o usuário ao abrir o app, então qualquer erro aqui é silencioso.
         /// </summary>
         public static async Task<AtualizacaoDisponivel?> VerificarAsync()
         {
@@ -91,7 +92,17 @@ namespace ElsEvo
                 if (info == null || string.IsNullOrWhiteSpace(info.Versao) || string.IsNullOrWhiteSpace(info.Url))
                     return null;
 
-                if (!VersaoEhMaisNova(info.Versao, AppVersion.VersaoParaAtualizacao))
+                // A comparação numérica de versão só faz sentido DENTRO do mesmo canal —
+                // os dois canais numeram suas rodadas de forma independente (ex.: beta
+                // pode estar em "1.0.450" enquanto o estável está em "1.0.4"), então "maior
+                // que" não tem significado nenhum entre eles. Quando o usuário marca "Beta
+                // apenas" e o app passa a consultar o canal BETA, é sempre uma TROCA DE
+                // CANAL (instalar a build beta por cima da estável), não uma sequência —
+                // por isso sempre oferece, mesmo que o número pareça "menor". Só dentro do
+                // próprio canal (buscarBeta == false, ou seja, canal estável de novo)
+                // a comparação numérica continua valendo, pra não ficar oferecendo a
+                // mesma versão repetidamente.
+                if (!buscarBeta && !VersaoEhMaisNova(info.Versao, AppVersion.VersaoParaAtualizacao))
                     return null;
 
                 return new AtualizacaoDisponivel
@@ -109,14 +120,14 @@ namespace ElsEvo
         }
 
         /// <summary>
-        /// Compara duas versões no formato "1.0.XXX" numericamente (Major.Minor.Build),
-        /// não como texto — "1.0.9" precisa ser considerado MENOR que "1.0.010", por
-        /// exemplo, o que uma comparação de string acertaria por acaso mas não de forma
-        /// confiável em todos os casos. Sempre manter os dois lados (version.json remoto
-        /// e AppVersion.VersaoParaAtualizacao local) com a MESMA quantidade de dígitos
-        /// (Major.Minor.Build, 3 números) — "1.0" e "1.0.0" NÃO são iguais pro
-        /// Version.TryParse (Build fica -1 vs 0), o que pode gerar falso positivo de
-        /// atualização disponível mesmo estando na versão certa.
+        /// Compara duas versões no formato "1.0.XXX" numericamente (Major.Minor.Build).
+        ///
+        /// CUIDADO: "1.0" e "1.0.0" NÃO são iguais pro Version.TryParse ("1.0" vira
+        /// Build = -1, "1.0.0" vira Build = 0) — isso pode gerar "atualização disponível"
+        /// falsa mesmo estando na versão certa. Por isso AppVersion.VersaoParaAtualizacao
+        /// e o campo "versao" do version.json remoto SEMPRE precisam ter a mesma
+        /// quantidade de dígitos entre si (3 números: Major.Minor.Build — ex.: "1.0.023",
+        /// nunca "1.0.23" nem "1.0").
         /// </summary>
         private static bool VersaoEhMaisNova(string versaoRemota, string versaoAtual)
         {
