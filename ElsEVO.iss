@@ -3,7 +3,9 @@
 ; Non-commercial use only.
 
 #define MyAppName "ElsEvo"
-#define MyAppVersion "1.0.4"
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.4"
+#endif
 #define MyAppPublisher "AyameJk"
 #define MyAppURL "https://www.example.com/"
 #define MyAppExeName "ElsEvo.exe"
@@ -16,7 +18,7 @@
 ; Pasta real onde o "dotnet publish" grava a build (self-contained, single-file), pra não
 ; repetir o caminho inteiro em cada linha do [Files] abaixo. Se um dia mudar o
 ; TargetFramework do .csproj (ex.: net8.0-windows -> net9.0-windows), ajuste aqui também.
-#define PublishDir "C:\Users\Victorr\OneDrive\ProjetoElsEvo\ElsEvo\bin\Release\net8.0-windows\win-x64"
+#define PublishDir "bin\Release\net8.0-windows\win-x64"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -45,7 +47,10 @@ ChangesAssociations=yes
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
-OutputDir=C:\Users\Victorr\Downloads\Output
+; Relativo (pasta "Output\" dentro do próprio repositório/projeto) -- funciona tanto
+; local quanto no GitHub Actions, que não tem acesso ao seu C:\Users\Victorr\Downloads.
+; Localmente, procure o instalador em Output\ dentro da pasta do projeto depois de compilar.
+OutputDir=Output
 
 ; IMPORTANTE: esse nome precisa bater exatamente com o que o atualizar-versao.yml monta
 ; na URL do version.json (https://.../releases/download/{tag}/ElsEvo-Setup.exe). Se mudar
@@ -56,7 +61,7 @@ OutputBaseFilename=ElsEvo-Setup
 
 ; O ícone fica dentro de Assets\, não solto na raiz do projeto (o duplicado solto foi
 ; removido do repositório -- ver commit "Remove ícone da aplicação solto").
-SetupIconFile=C:\Users\Victorr\OneDrive\ProjetoElsEvo\ElsEvo\Assets\icone_app.ico
+SetupIconFile=Assets\icone_app.ico
 SolidCompression=yes
 WizardStyle=modern dynamic
 

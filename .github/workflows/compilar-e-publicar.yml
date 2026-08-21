@@ -1,0 +1,202 @@
+name: Compilar e Publicar Instalador
+
+# ATENÇÃO: este workflow deve existir SOMENTE no repositório ElsEvo (canal estável).
+# Não copiar para o ElsEvoBeta.
+#
+# Este workflow SUBSTITUI o atualizar-versao.yml antigo -- as duas etapas (gerar o
+# instalador e atualizar o version.json) agora rodam em SEQUÊNCIA GARANTIDA dentro do
+# mesmo job, evitando o problema de o version.json apontar pra uma URL de instalador
+# que ainda não existe (race condition entre dois workflows separados escutando o
+# mesmo evento "release: published").
+#
+# Dispara em duas situações:
+#   1) push na main -> só compila, pra pegar erro cedo (não gera instalador nem publica nada)
+#   2) publicação de uma Release -> compila, gera o instalador, anexa na Release,
+#      e SÓ DEPOIS disso atualiza o version.json
+#
+# A versão usada em TUDO (csproj, AppVersion.cs, .iss, version.json) vem da tag da
+# Release (ex: v1.0.5 -> 1.0.5). Você não edita nada de versão manualmente nunca mais,
+# só cria a tag/Release certa no GitHub.
+#
+# IMPORTANTE: se este workflow estiver ativo, DESATIVE ou APAGUE o antigo
+# .github/workflows/atualizar-versao.yml -- os dois rodando juntos no mesmo evento
+# fariam o version.json ser escrito duas vezes (uma delas cedo demais).
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch: # permite rodar manualmente pela aba Actions, se precisar
+
+permissions:
+  contents: write # necessário pra anexar o instalador na Release e fazer push do version.json
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_FILE: 'ElsEVO.csproj'
+  ISS_FILE: 'ElsEVO.iss'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+        with:
+          ref: main # garante que estamos sempre commitando/lendo a partir da main
+
+      - name: Configurar .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Só existe uma versão real quando o gatilho foi uma Release publicada.
+      # Em push comum na main, usamos um valor fixo de rascunho só pra compilar.
+      - name: Determinar versão
+        id: versao
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "release") {
+            $tag = "${{ github.event.release.tag_name }}"
+            $versao = $tag -replace '^v', ''
+          } else {
+            $versao = "0.0.0-dev"
+          }
+          Write-Host "Versão resolvida: $versao"
+          echo "versao=$versao" >> $env:GITHUB_OUTPUT
+
+      # Só sobrescreve a constante se a versão for uma release de verdade (X.Y.Z),
+      # não a build de rascunho de push comum na main.
+      - name: Sincronizar versão em AppVersion.cs
+        if: github.event_name == 'release'
+        shell: pwsh
+        run: |
+          $versao = "${{ steps.versao.outputs.versao }}"
+          $caminho = "AppVersion.cs"
+          $conteudo = Get-Content $caminho -Raw
+          $conteudo = $conteudo -replace 'VersaoParaAtualizacao = "[^"]+"', "VersaoParaAtualizacao = `"$versao`""
+          Set-Content -Path $caminho -Value $conteudo -NoNewline
+          Write-Host "AppVersion.cs atualizado para $versao"
+
+      - name: Restaurar dependências
+        run: dotnet restore ${{ env.PROJECT_FILE }}
+
+      # dotnet publish, não dotnet build -- precisa gerar o self-contained
+      # single-file exatamente como no comando que você já roda localmente,
+      # senão a pasta de saída não bate com o que o .iss espera.
+      - name: Publicar (self-contained, single-file)
+        run: >
+          dotnet publish ${{ env.PROJECT_FILE }}
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:Version=${{ steps.versao.outputs.versao }}
+
+      - name: Verificar se o executável foi gerado
+        shell: pwsh
+        run: |
+          $caminho = "bin\Release\net8.0-windows\win-x64\ElsEvo.exe"
+          if (-not (Test-Path $caminho)) {
+            Write-Error "ElsEvo.exe não foi encontrado em $caminho -- publish falhou silenciosamente."
+            exit 1
+          }
+          Write-Host "Executável encontrado: $caminho"
+
+      - name: Instalar Inno Setup
+        if: github.event_name == 'release'
+        run: choco install innosetup -y
+
+      # Passa a versão por fora via /D -- funciona porque o .iss tem o bloco
+      # #ifndef MyAppVersion / #define ... / #endif em vez de #define fixo.
+      - name: Compilar instalador com Inno Setup
+        if: github.event_name == 'release'
+        shell: pwsh
+        run: |
+          $issc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & $issc "${{ env.ISS_FILE }}" "/DMyAppVersion=${{ steps.versao.outputs.versao }}"
+
+      - name: Verificar se o instalador foi gerado
+        if: github.event_name == 'release'
+        shell: pwsh
+        run: |
+          $caminho = "Output\ElsEvo-Setup.exe"
+          if (-not (Test-Path $caminho)) {
+            Write-Error "ElsEvo-Setup.exe não foi encontrado em $caminho -- confira o OutputDir no .iss."
+            exit 1
+          }
+          Write-Host "Instalador encontrado: $caminho"
+          echo "CAMINHO_INSTALADOR=$caminho" >> $env:GITHUB_ENV
+
+      # Em push normal, só guarda o build como artefato pra conferência --
+      # não anexa em lugar nenhum público.
+      - name: Salvar artefato de build (push/manual)
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: elsevo-build-${{ github.sha }}
+          path: bin/Release/net8.0-windows/win-x64/
+          retention-days: 7
+
+      # Anexa o instalador real na própria Release. Esse passo precisa terminar
+      # ANTES do próximo (atualizar version.json), senão o link fica quebrado --
+      # por isso os dois estão no mesmo job, em sequência, e não em dois workflows
+      # separados escutando o mesmo evento.
+      - name: Anexar instalador na Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.CAMINHO_INSTALADOR }}
+          tag_name: ${{ github.event.release.tag_name }}
+
+      # SÓ RODA DEPOIS que o instalador já está anexado na Release (passo acima
+      # concluído com sucesso) -- garante que a URL que vai pro version.json já existe
+      # de verdade antes de qualquer usuário poder vê-la.
+      - name: Atualizar version.json com os dados da Release
+        if: github.event_name == 'release'
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 <<'PYEOF'
+          import json
+          import os
+
+          tag = os.environ["TAG_NAME"]
+          versao = tag[1:] if tag.startswith("v") else tag
+
+          # Mesmo formato/nome de asset de sempre -- case-sensitive, tem que bater
+          # exatamente com OutputBaseFilename no .iss.
+          url_instalador = f'https://github.com/{os.environ["REPO"]}/releases/download/{tag}/ElsEvo-Setup.exe'
+
+          dados = {
+              "versao": versao,
+              "url": url_instalador,
+              "notas": os.environ.get("RELEASE_NOTES") or ""
+          }
+
+          with open("version.json", "w", encoding="utf-8") as f:
+              json.dump(dados, f, indent=2, ensure_ascii=False)
+              f.write("\n")
+
+          print(f"version.json atualizado para a versão {versao} ({url_instalador})")
+          PYEOF
+
+      - name: Commit e push do version.json
+        if: github.event_name == 'release'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json
+
+          if git diff --cached --quiet; then
+            echo "Nada mudou no version.json -- pulando commit."
+            exit 0
+          fi
+
+          git commit -m "Atualiza version.json (${{ github.event.release.tag_name }})"
+          git push
