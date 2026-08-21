@@ -110,6 +110,27 @@ jobs:
         if: github.event_name == 'release'
         run: choco install innosetup -y
 
+      # O pacote do choco só traz os idiomas OFICIAIS do Inno Setup (inclui
+      # BrazilianPortuguese e Spanish, por exemplo). ChineseSimplified e Japanese são
+      # traduções da comunidade ("não-oficiais") que só vêm inclusas se você usa o
+      # instalador completo do site oficial e marca a opção de baixar idiomas extras --
+      # é por isso que funciona na sua máquina local mas falha aqui. Baixamos os dois
+      # arquivos .isl que faltam direto do repositório oficial do Inno Setup no GitHub
+      # e colocamos na mesma pasta Languages\ (mesmo lugar onde os oficiais já estão),
+      # sem precisar mudar nada no .iss.
+      - name: Baixar traduções não-oficiais do Inno Setup (Chinês e Japonês)
+        if: github.event_name == 'release'
+        shell: pwsh
+        run: |
+          $pastaIdiomas = "C:\Program Files (x86)\Inno Setup 6\Languages"
+          $arquivos = @("ChineseSimplified.isl", "Japanese.isl")
+          foreach ($arquivo in $arquivos) {
+            $url = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/$arquivo"
+            $destino = Join-Path $pastaIdiomas $arquivo
+            Invoke-WebRequest -Uri $url -OutFile $destino
+            Write-Host "Baixado: $arquivo"
+          }
+
       # Passa a versão por fora via /D -- funciona porque o .iss tem o bloco
       # #ifndef MyAppVersion / #define ... / #endif em vez de #define fixo.
       - name: Compilar instalador com Inno Setup
