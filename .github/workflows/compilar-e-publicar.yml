@@ -133,29 +133,33 @@ jobs:
         run: choco install innosetup -y
 
       # O pacote do choco só traz os idiomas OFICIAIS do Inno Setup (inclui
-      # BrazilianPortuguese e Spanish, por exemplo). Japanese é tradução da comunidade
-      # ("não-oficial") que só vem inclusa se você usa o instalador completo do site
-      # oficial e marca a opção de baixar idiomas extras -- é por isso que funciona na
-      # sua máquina local mas falha aqui. Baixamos o .isl que falta direto do
-      # repositório oficial do Inno Setup no GitHub (pasta Unofficial) e colocamos na
-      # mesma pasta Languages\ (mesmo lugar onde os oficiais já estão), sem precisar
-      # mudar nada no .iss.
+      # BrazilianPortuguese e Spanish, por exemplo). Japanese.isl EXISTE no
+      # repositório oficial do Inno Setup, mas não vem empacotado no instalador do
+      # choco -- só quando você usa o instalador completo do site oficial e marca a
+      # opção de baixar idiomas extras. É por isso que funciona na sua máquina local
+      # mas falha aqui. Baixamos o arquivo que falta direto do repositório oficial e
+      # colocamos na mesma pasta Languages\ (mesmo lugar onde os oficiais já estão),
+      # sem precisar mudar nada no .iss.
       #
       # NOTA: Chinês Simplificado foi removido da lista de idiomas do [Languages] do
-      # .iss (dava problema no CI) -- então não baixamos mais ChineseSimplified.isl
-      # aqui, só o que o .iss realmente usa.
+      # .iss (dava problema no CI) -- então não baixamos ChineseSimplified.isl aqui,
+      # só o que o .iss realmente usa.
       #
-      # CORREÇÃO: a URL usada antes ("https://githubusercontent.com") estava incompleta
-      # -- só o domínio, sem o caminho do arquivo -- por isso o Invoke-WebRequest falhava
-      # com "The requested name is valid, but no data of the requested type was found."
-      # (não tem nada pra baixar num domínio sozinho). A URL certa aponta pro raw do
-      # arquivo .isl dentro do repositório oficial do Inno Setup (jrsoftware/issrc).
+      # HISTÓRICO DE TENTATIVAS ERRADAS DE URL (pra não repetir o mesmo erro no futuro):
+      #   1) "https://githubusercontent.com" -- incompleta, só o domínio, sem caminho
+      #      nenhum. Dava "no data of the requested type was found".
+      #   2) ".../Files/Languages/Unofficial/Japanese.isl" -- caminho errado, dava 404.
+      #      A maioria das traduções da comunidade fica em Unofficial/, mas o
+      #      Japanese.isl é exceção: fica direto em Files/Languages/, junto dos
+      #      idiomas oficiais.
+      #   3) (a certa) ".../Files/Languages/Japanese.isl", branch "main" -- confirmada
+      #      inspecionando o repositório jrsoftware/issrc diretamente.
       - name: Baixar tradução não-oficial do Inno Setup (Japonês)
         if: github.event_name == 'release'
         shell: pwsh
         run: |
           $pastaIdiomas = "C:\Program Files (x86)\Inno Setup 6\Languages"
-          $url = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/Japanese.isl"
+          $url = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Japanese.isl"
           $destino = Join-Path $pastaIdiomas "Japanese.isl"
           Invoke-WebRequest -Uri $url -OutFile $destino
           Write-Host "Baixado: Japanese.isl"
