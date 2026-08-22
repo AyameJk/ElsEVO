@@ -21,6 +21,14 @@ name: Compilar e Publicar Instalador
 # IMPORTANTE: se este workflow estiver ativo, DESATIVE ou APAGUE o antigo
 # .github/workflows/atualizar-versao.yml -- os dois rodando juntos no mesmo evento
 # fariam o version.json ser escrito duas vezes (uma delas cedo demais).
+#
+# IMPORTANTE (runner é Windows): o shell PADRÃO em jobs "windows-latest" é o
+# PowerShell, não o Bash -- qualquer "run:" com sintaxe Bash (heredoc "<<'EOF'",
+# "if...then...fi", etc.) precisa declarar "shell: bash" explicitamente, senão o
+# PowerShell tenta interpretar aquilo como PowerShell e quebra com ParserError.
+# As etapas que usam Python via heredoc e o commit/push do version.json (que usa
+# "if git diff --cached --quiet; then ... fi") são exatamente esse caso -- ambas
+# têm "shell: bash" abaixo por causa disso.
 
 on:
   push:
@@ -34,8 +42,8 @@ permissions:
 
 env:
   DOTNET_VERSION: '8.0.x'
-  PROJECT_FILE: 'ElsEVO.csproj'
-  ISS_FILE: 'ElsEVO.iss'
+  PROJECT_FILE: 'ElsEvo.csproj'
+  ISS_FILE: 'ElsEvo.iss'
 
 jobs:
   build:
@@ -176,8 +184,14 @@ jobs:
       # SÓ RODA DEPOIS que o instalador já está anexado na Release (passo acima
       # concluído com sucesso) -- garante que a URL que vai pro version.json já existe
       # de verdade antes de qualquer usuário poder vê-la.
+      #
+      # shell: bash -- OBRIGATÓRIO aqui. O runner é windows-latest, shell padrão é
+      # PowerShell, e o heredoc "python3 <<'PYEOF' ... PYEOF" é sintaxe Bash. Sem essa
+      # linha, o PowerShell tenta interpretar "<<" como operador de redirecionamento
+      # dele mesmo e quebra com "Missing file specification after redirection operator."
       - name: Atualizar version.json com os dados da Release
         if: github.event_name == 'release'
+        shell: bash
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
           RELEASE_NOTES: ${{ github.event.release.body }}
@@ -207,8 +221,13 @@ jobs:
           print(f"version.json atualizado para a versão {versao} ({url_instalador})")
           PYEOF
 
+      # shell: bash -- OBRIGATÓRIO aqui também, pelo mesmo motivo acima. O bloco
+      # "if git diff --cached --quiet; then ... fi" é sintaxe Bash (PowerShell usa
+      # "if (...) { }", não "if...then...fi") -- sem essa linha, esse passo quebraria
+      # do mesmo jeito assim que o anterior fosse corrigido.
       - name: Commit e push do version.json
         if: github.event_name == 'release'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
