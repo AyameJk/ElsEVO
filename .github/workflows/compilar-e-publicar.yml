@@ -199,41 +199,27 @@ jobs:
       # concluído com sucesso) -- garante que a URL que vai pro version.json já existe
       # de verdade antes de qualquer usuário poder vê-la.
       #
-      # shell: bash -- OBRIGATÓRIO aqui. O runner é windows-latest, shell padrão é
-      # PowerShell, e o heredoc "python3 <<'PYEOF' ... PYEOF" é sintaxe Bash. Sem essa
-      # linha, o PowerShell tenta interpretar "<<" como operador de redirecionamento
-      # dele mesmo e quebra com "Missing file specification after redirection operator."
+      # NOTA (histórico do bug de heredoc): esse step antes rodava o código Python
+      # via heredoc Bash direto no run: ("python3 <<'PYEOF' ... PYEOF"). Isso quebrava
+      # de forma intermitente em runners Windows -- mesmo com "shell: bash" e mesmo
+      # com core.autocrlf desativado no checkout -- porque o PRÓPRIO ARQUIVO .yml
+      # podia estar armazenado no repositório com CRLF de verdade dentro do blob do
+      # Git (não é só uma questão de config de checkout: se o conteúdo salvo já tem
+      # "\r\n", é isso que o bash vai ler, ponto final). O marcador de fechamento
+      # "PYEOF" virava "PYEOF\r" e o bash não reconhecia o fim do heredoc, gerando
+      # "Missing file specification after redirection operator."
+      #
+      # A correção definitiva foi tirar o heredoc da jogada: o código agora vive num
+      # arquivo .py de verdade (scripts/atualizar_version_json.py), e Python lê
+      # qualquer terminação de linha sem problema nenhum (universal newlines) -- não
+      # importa mais se o arquivo está em LF ou CRLF.
       - name: Atualizar version.json com os dados da Release
         if: github.event_name == 'release'
-        shell: bash
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
           RELEASE_NOTES: ${{ github.event.release.body }}
           REPO: ${{ github.repository }}
-        run: |
-          python3 <<'PYEOF'
-          import json
-          import os
-
-          tag = os.environ["TAG_NAME"]
-          versao = tag[1:] if tag.startswith("v") else tag
-
-          # Mesmo formato/nome de asset de sempre -- case-sensitive, tem que bater
-          # exatamente com OutputBaseFilename no .iss.
-          url_instalador = f'https://github.com{os.environ["REPO"]}/releases/download/{tag}/ElsEvo-Setup.exe'
-
-          dados = {
-              "versao": versao,
-              "url": url_instalador,
-              "notas": os.environ.get("RELEASE_NOTES") or ""
-          }
-
-          with open("version.json", "w", encoding="utf-8") as f:
-              json.dump(dados, f, indent=2, ensure_ascii=False)
-              f.write("\n")
-
-          print(f"version.json atualizado para a versão {versao} ({url_instalador})")
-          PYEOF
+        run: python3 scripts/atualizar_version_json.py
 
       # shell: bash -- OBRIGATÓRIO aqui também, pelo mesmo motivo acima. O bloco
       # "if git diff --cached --quiet; then ... fi" é sintaxe Bash (PowerShell usa
