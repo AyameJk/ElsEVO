@@ -29,6 +29,15 @@ name: Compilar e Publicar Instalador
 # As etapas que usam Python via heredoc e o commit/push do version.json (que usa
 # "if git diff --cached --quiet; then ... fi") são exatamente esse caso -- ambas
 # têm "shell: bash" abaixo por causa disso.
+#
+# CORREÇÃO (autocrlf): o actions/checkout no Windows por padrão baixa os arquivos
+# convertendo LF -> CRLF (core.autocrlf=true é o default do Git for Windows nos
+# runners da GitHub). Isso inclui ESTE PRÓPRIO ARQUIVO .yml -- e o heredoc Bash
+# "<<'PYEOF' ... PYEOF" é sensível a isso: se a linha final "PYEOF" for lida como
+# "PYEOF\r" (por causa do CRLF), o bash não reconhece o marcador de fim do heredoc
+# e quebra com erro de redirecionamento/parsing. O primeiro step abaixo desativa
+# essa conversão ANTES do checkout baixar qualquer arquivo, resolvendo a causa raiz
+# sem precisar reescrever a lógica em Python/heredoc que já funciona.
 
 on:
   push:
@@ -50,6 +59,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # Precisa rodar ANTES do checkout, senão os arquivos já baixam com CRLF.
+      - name: Desativar conversão CRLF do Git (evita heredoc bash quebrado no Windows)
+        run: git config --global core.autocrlf false
+        shell: bash
+
       - name: Baixar código do repositório
         uses: actions/checkout@v4
         with:
@@ -224,3 +238,12 @@ jobs:
       # shell: bash -- OBRIGATÓRIO aqui também, pelo mesmo motivo acima. O bloco
       # "if git diff --cached --quiet; then ... fi" é sintaxe Bash (PowerShell usa
       # "if (...) { }", não "if...then...fi") -- sem essa linha, esse passo quebraria
+      # com ParserError no PowerShell.
+      - name: Commit e push do version.json
+        if: github.event_name == 'release'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json
+          git diff --cached --quiet || (git commit -m "Atualiza version.json (${{ github.event.release.tag_name }})" && git push origin HEAD:main)
